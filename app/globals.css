@@ -5,6 +5,10 @@
   --foreground: #171717;
 }
 
+.input {
+  @apply w-full border rounded p-2;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
