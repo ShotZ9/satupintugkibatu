@@ -3,19 +3,23 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+
 // import * as XLSX from 'xlsx'
 // import { saveAs } from 'file-saver'
+
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { Chart } from 'chart.js/auto'
+
+type Statistik = {
+    total: number
+    perStatusPengisi: Record<string, number>
+    perStatus: Record<string, number>
+}
 
 export default function RiwayatMajelisPage() {
-    type Statistik = {
-        total: number
-        perStatusPengisi: Record<string, number>
-        perStatus: Record<string, number>
-    }
-
     const router = useRouter()
+
     const [requests, setRequests] = useState<any[]>([])
     const [bulan, setBulan] = useState<string>('')
     const [statistik, setStatistik] = useState<Statistik | null>(null)
@@ -27,33 +31,26 @@ export default function RiwayatMajelisPage() {
         selesai: 'Selesai'
     }
 
-    // function exportExcel(data: any[]) {
-    //     const formatted = data.map((r) => ({
-    //         Nama: r.nama_pengisi,
-    //         Status_Pengisi: r.status_pengisi,
-    //         WhatsApp: r.whatsapp,
-    //         Pesan: r.pesan,
-    //         Tanggal_Diminta: r.tanggal_diminta,
-    //         Tanggal_Selesai: r.selesai_at
-    //             ? new Date(r.selesai_at).toLocaleString()
-    //             : '',
-    //         Catatan_Majelis: r.catatan_majelis || ''
-    //     }))
-
-    //     const worksheet = XLSX.utils.json_to_sheet(formatted)
-    //     const workbook = XLSX.utils.book_new()
-    //     XLSX.utils.book_append_sheet(workbook, worksheet, 'Riwayat')
-
-    //     const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
-    //     saveAs(
-    //         new Blob([buffer], { type: 'application/octet-stream' }),
-    //         `riwayat-permintaan.xlsx`
-    //     )
-    // }
-    function exportPDF(data: any[]) {
+    async function exportPDF(data: any[]) {
         const doc = new jsPDF()
 
+        // ===== JUDUL =====
+        doc.setFontSize(14)
+        doc.text('Riwayat Permintaan', 14, 15)
+
+        // ===== STATISTIK =====
+        if (statistik) {
+            doc.setFontSize(10)
+            doc.text(`Total Permintaan: ${statistik.total}`, 14, 25)
+
+            // ===== GRAFIK =====
+            const chartImg = await generateChartImage(statistik)
+            doc.addImage(chartImg, 'PNG', 14, 30, 80, 60)
+        }
+
+        // ===== TABLE =====
         autoTable(doc, {
+            startY: statistik ? 100 : 30,
             head: [[
                 'Nama',
                 'Status',
@@ -62,7 +59,7 @@ export default function RiwayatMajelisPage() {
                 'Tgl Diminta',
                 'Tgl Selesai'
             ]],
-            body: data.map(r => [
+            body: data.map((r) => [
                 r.nama_pengisi,
                 r.status_pengisi,
                 r.whatsapp,
@@ -77,6 +74,42 @@ export default function RiwayatMajelisPage() {
         doc.save('riwayat-permintaan.pdf')
     }
 
+    async function generateChartImage(statistik: Statistik) {
+        return new Promise<string>((resolve) => {
+            const canvas = document.createElement('canvas')
+            canvas.width = 400
+            canvas.height = 300
+
+            const ctx = canvas.getContext('2d')!
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(statistik.perStatus),
+                    datasets: [
+                        {
+                            label: 'Jumlah Permintaan',
+                            data: Object.values(statistik.perStatus),
+                        }
+                    ]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            })
+
+            // tunggu render
+            setTimeout(() => {
+                resolve(canvas.toDataURL('image/png'))
+            }, 500)
+        })
+    }
+
     async function loadData() {
         let query = supabase
             .from('requests')
@@ -87,7 +120,7 @@ export default function RiwayatMajelisPage() {
         // filter per bulan (YYYY-MM)
         if (bulan) {
             const start = `${bulan}-01`
-            const end = new Date(bulan + '-01')
+            const end = new Date(`${bulan}-01`)
             end.setMonth(end.getMonth() + 1)
 
             query = query
@@ -112,7 +145,8 @@ export default function RiwayatMajelisPage() {
                 (perStatusPengisi[r.status_pengisi] || 0) + 1
 
             // status proses
-            perStatus[r.status] = (perStatus[r.status] || 0) + 1
+            perStatus[r.status] =
+                (perStatus[r.status] || 0) + 1
         })
 
         return {
@@ -127,76 +161,96 @@ export default function RiwayatMajelisPage() {
     }, [bulan])
 
     return (
-        <main className="p-4">
+        <main className="min-h-screen p-4 bg-gray-50">
             {/* HEADER */}
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-xl font-bold">Riwayat Permintaan</h1>
-                {/* <button
-                    onClick={() => exportExcel(requests)}
-                    className="text-sm bg-green-600 text-white px-3 py-1 rounded"
-                >
-                    Export Excel
-                </button> */}
-                <button
-                    onClick={() => exportPDF(requests)}
-                    className="text-sm bg-red-600 text-white px-3 py-1 rounded"
-                >
-                    Export PDF
-                </button>
-                <button
-                    onClick={() => router.push('/majelis')}
-                    className="text-sm text-blue-600 underline"
-                >
-                    Kembali ke Dashboard
-                </button>
+            <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+                <h1 className="text-xl font-bold text-gray-900">
+                    Riwayat Permintaan
+                </h1>
+
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => exportPDF(requests)}
+                        className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+                    >
+                        Export PDF
+                    </button>
+
+                    <button
+                        onClick={() => router.push('/majelis')}
+                        className="text-sm text-blue-600 hover:underline"
+                    >
+                        Kembali ke Dashboard
+                    </button>
+                </div>
             </div>
 
             {/* FILTER */}
             <div className="mb-4">
-                <label className="text-sm font-semibold block mb-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Filter Bulan
                 </label>
                 <input
                     type="month"
                     value={bulan}
                     onChange={(e) => setBulan(e.target.value)}
-                    className="border px-2 py-1 rounded"
+                    className="
+                        border border-gray-300
+                        bg-white
+                        px-2 py-1 rounded
+                        text-gray-900
+                        focus:outline-none
+                        focus:ring-2 focus:ring-black
+                    "
                 />
             </div>
+
             {/* STATISTIK */}
             {statistik && (
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
-                    {/* TOTAL */}
-                    <div className="border rounded p-3 bg-white">
+                    <div className="border border-gray-200 rounded p-3 bg-white shadow-sm">
                         <p className="text-sm text-gray-500">
-                            Total Permintaan {bulan ? '(Bulan terfilter)' : '(Semua Arsip)'}
+                            Total Permintaan{' '}
+                            {bulan ? '(Bulan terfilter)' : '(Semua Arsip)'}
                         </p>
-                        <p className="text-2xl font-bold">{statistik.total}</p>
+                        <p className="text-2xl font-bold text-gray-900">
+                            {statistik.total}
+                        </p>
                     </div>
 
-                    {/* PER STATUS PENGISI */}
-                    <div className="border rounded p-3 bg-white">
-                        <p className="text-sm font-semibold mb-2">Berdasarkan Pengisi</p>
-                        <ul className="text-sm space-y-1">
-                            {Object.entries(statistik.perStatusPengisi).map(([k, v]) => (
-                                <li key={k} className="flex justify-between">
-                                    <span>{k}</span>
-                                    <span className="font-semibold">{v}</span>
-                                </li>
-                            ))}
+                    <div className="border border-gray-200 rounded p-3 bg-white shadow-sm">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">
+                            Berdasarkan Pengisi
+                        </p>
+                        <ul className="text-sm space-y-1 text-gray-700">
+                            {Object.entries(statistik.perStatusPengisi).map(
+                                ([k, v]) => (
+                                    <li key={k} className="flex justify-between">
+                                        <span>{k}</span>
+                                        <span className="font-semibold">
+                                            {v}
+                                        </span>
+                                    </li>
+                                )
+                            )}
                         </ul>
                     </div>
 
-                    {/* PER STATUS PROSES */}
-                    <div className="border rounded p-3 bg-white">
-                        <p className="text-sm font-semibold mb-2">Status Proses</p>
-                        <ul className="text-sm space-y-1">
-                            {Object.entries(statistik.perStatus).map(([k, v]) => (
-                                <li key={k} className="flex justify-between">
-                                    <span>{statusMeta[k] ?? k}</span>
-                                    <span className="font-semibold">{v}</span>
-                                </li>
-                            ))}
+                    <div className="border border-gray-200 rounded p-3 bg-white shadow-sm">
+                        <p className="text-sm font-semibold text-gray-700 mb-2">
+                            Status Proses
+                        </p>
+                        <ul className="text-sm space-y-1 text-gray-700">
+                            {Object.entries(statistik.perStatus).map(
+                                ([k, v]) => (
+                                    <li key={k} className="flex justify-between">
+                                        <span>{statusMeta[k] ?? k}</span>
+                                        <span className="font-semibold">
+                                            {v}
+                                        </span>
+                                    </li>
+                                )
+                            )}
                         </ul>
                     </div>
                 </div>
@@ -204,17 +258,26 @@ export default function RiwayatMajelisPage() {
 
             {/* DATA */}
             {requests.length === 0 && (
-                <p className="text-sm text-gray-500">Tidak ada data riwayat.</p>
+                <p className="text-sm text-gray-500">
+                    Tidak ada data riwayat.
+                </p>
             )}
 
             {requests.map((req) => (
-                <div key={req.id} className="border rounded p-4 mb-4">
+                <div
+                    key={req.id}
+                    className="border border-gray-200 bg-white rounded p-4 mb-4 shadow-sm"
+                >
                     <div className="mb-2">
-                        <p className="font-bold">{req.nama_pengisi}</p>
-                        <p className="text-sm text-gray-600">{req.status_pengisi}</p>
+                        <p className="font-bold text-gray-900">
+                            {req.nama_pengisi}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                            {req.status_pengisi}
+                        </p>
                     </div>
 
-                    <div className="text-sm space-y-1 mb-2">
+                    <div className="text-sm text-gray-700 space-y-1 mb-2">
                         <p>
                             <span className="font-semibold">WhatsApp:</span>{' '}
                             {req.whatsapp}
@@ -233,12 +296,12 @@ export default function RiwayatMajelisPage() {
                         </p>
                     </div>
 
-                    <div className="bg-gray-50 border rounded p-2 text-sm mb-2">
+                    <div className="bg-gray-100 border border-gray-200 rounded p-2 text-sm text-gray-800 mb-2">
                         {req.pesan}
                     </div>
 
                     {req.catatan_majelis && (
-                        <div className="text-sm bg-yellow-50 border-l-4 border-yellow-500 p-2">
+                        <div className="text-sm bg-yellow-50 border-l-4 border-yellow-400 p-2 text-gray-800">
                             <b>Catatan Majelis:</b>
                             <br />
                             {req.catatan_majelis}

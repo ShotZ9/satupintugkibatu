@@ -30,10 +30,7 @@ export default function AdminPage() {
     async function selesai(id: string) {
         await supabase
             .from('requests')
-            .update({
-                status: 'selesai',
-                selesai_at: new Date().toISOString()
-            })
+            .update({ status: 'selesai', selesai_at: new Date().toISOString(), archived: true })
             .eq('id', id)
 
         loadData()
@@ -49,83 +46,81 @@ export default function AdminPage() {
     }, [])
 
     return (
-        <main className="p-4">
-            {/* HEADER */}
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-xl font-bold">Dashboard Admin</h1>
-                <button onClick={logout} className="text-sm text-red-600 underline">
+        <main className="min-h-screen bg-neutral-50 p-6">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-semibold text-neutral-800">
+                    Dashboard Admin
+                </h1>
+                <button
+                    onClick={logout}
+                    className="text-sm text-red-600 hover:text-red-700"
+                >
                     Logout
                 </button>
             </div>
 
-            {requests.map(req => (
-                <div key={req.id} className="border p-3 rounded mb-4">
-                    {/* HEADER IDENTITAS */}
-                    <div className="mb-2">
-                        <p className="font-bold text-lg">{req.nama_pengisi}</p>
-                        <p className="text-sm text-gray-600">
+            <div className="space-y-4">
+                {requests.map((req) => (
+                    <div
+                        key={req.id}
+                        className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
+                    >
+                        <p className="text-lg font-semibold text-neutral-800">
+                            {req.nama_pengisi}
+                        </p>
+                        <p className="text-sm text-neutral-500 mb-2">
                             {req.status_pengisi}
                         </p>
-                    </div>
 
-                    {/* DETAIL */}
-                    <div className="text-sm space-y-1 mb-2">
-                        <p>
-                            <span className="font-semibold">WhatsApp:</span>{' '}
-                            <a
-                                href={`https://wa.me/${req.whatsapp}`}
-                                target="_blank"
-                                className="text-green-600 underline"
-                            >
-                                {req.whatsapp}
-                            </a>
-                        </p>
-
-                        <p>
-                            <span className="font-semibold">Tanggal Diminta:</span>{' '}
-                            {req.tanggal_diminta}
-                        </p>
-
-                        <p>
-                            <span className="font-semibold">Diajukan:</span>{' '}
-                            {new Date(req.tanggal_pengajuan).toLocaleString()}
-                        </p>
-                    </div>
-
-                    {/* PESAN */}
-                    <div className="bg-gray-50 border rounded p-2 mb-2 text-sm">
-                        {req.pesan}
-                    </div>
-
-                    {/* CATATAN MAJELIS */}
-                    {req.catatan_majelis && (
-                        <div className="mb-3 p-2 bg-yellow-50 border-l-4 border-yellow-500 text-sm">
-                            <b>Catatan Majelis:</b>
-                            <br />
-                            {req.catatan_majelis}
+                        <div className="text-sm text-neutral-700 space-y-1 mb-3">
+                            <p>
+                                <span className="font-medium">WhatsApp:</span>{' '}
+                                <a
+                                    href={`https://wa.me/${req.whatsapp}`}
+                                    target="_blank"
+                                    className="text-green-600 underline"
+                                >
+                                    {req.whatsapp}
+                                </a>
+                            </p>
+                            <p>
+                                <span className="font-medium">Tanggal Diminta:</span>{' '}
+                                {req.tanggal_diminta}
+                            </p>
                         </div>
-                    )}
 
-                    {/* ACTION */}
-                    <div className="mt-2 flex gap-2">
-                        {req.status === 'menunggu_admin' && (
-                            <button
-                                onClick={() => mulaiKerjakan(req.id)}
-                                className="bg-orange-600 text-white px-3 py-1 rounded"
-                            >
-                                Mulai Kerjakan
-                            </button>
+                        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 text-sm mb-3">
+                            {req.pesan}
+                        </div>
+
+                        {req.catatan_majelis && (
+                            <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm">
+                                <b>Catatan Majelis:</b>
+                                <br />
+                                {req.catatan_majelis}
+                            </div>
                         )}
 
-                        <button
-                            onClick={() => selesai(req.id)}
-                            className="bg-blue-600 text-white px-3 py-1 rounded"
-                        >
-                            Tandai Selesai
-                        </button>
+                        <div className="flex gap-2">
+                            {req.status === 'menunggu_admin' && (
+                                <button
+                                    onClick={() => mulaiKerjakan(req.id)}
+                                    className="rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm hover:bg-neutral-800"
+                                >
+                                    Mulai Kerjakan
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => selesai(req.id)}
+                                className="rounded-lg bg-blue-600 text-white px-4 py-2 text-sm hover:bg-blue-700"
+                            >
+                                Tandai Selesai
+                            </button>
+                        </div>
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
         </main>
     )
 }
