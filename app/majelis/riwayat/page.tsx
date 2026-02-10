@@ -9,9 +9,16 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 export default function RiwayatMajelisPage() {
+    type Statistik = {
+        total: number
+        perStatusPengisi: Record<string, number>
+        perStatus: Record<string, number>
+    }
+
     const router = useRouter()
     const [requests, setRequests] = useState<any[]>([])
     const [bulan, setBulan] = useState<string>('')
+    const [statistik, setStatistik] = useState<Statistik | null>(null)
 
     const statusMeta: Record<string, string> = {
         menunggu_majelis: 'Menunggu Majelis',
@@ -89,7 +96,30 @@ export default function RiwayatMajelisPage() {
         }
 
         const { data } = await query
-        setRequests(data || [])
+        const rows = data || []
+
+        setRequests(rows)
+        setStatistik(hitungStatistik(rows))
+    }
+
+    function hitungStatistik(data: any[]): Statistik {
+        const perStatusPengisi: Record<string, number> = {}
+        const perStatus: Record<string, number> = {}
+
+        data.forEach((r) => {
+            // status pengisi
+            perStatusPengisi[r.status_pengisi] =
+                (perStatusPengisi[r.status_pengisi] || 0) + 1
+
+            // status proses
+            perStatus[r.status] = (perStatus[r.status] || 0) + 1
+        })
+
+        return {
+            total: data.length,
+            perStatusPengisi,
+            perStatus
+        }
     }
 
     useEffect(() => {
@@ -133,6 +163,44 @@ export default function RiwayatMajelisPage() {
                     className="border px-2 py-1 rounded"
                 />
             </div>
+            {/* STATISTIK */}
+            {statistik && (
+                <div className="mb-6 grid gap-4 md:grid-cols-3">
+                    {/* TOTAL */}
+                    <div className="border rounded p-3 bg-white">
+                        <p className="text-sm text-gray-500">
+                            Total Permintaan {bulan ? '(Bulan terfilter)' : '(Semua Arsip)'}
+                        </p>
+                        <p className="text-2xl font-bold">{statistik.total}</p>
+                    </div>
+
+                    {/* PER STATUS PENGISI */}
+                    <div className="border rounded p-3 bg-white">
+                        <p className="text-sm font-semibold mb-2">Berdasarkan Pengisi</p>
+                        <ul className="text-sm space-y-1">
+                            {Object.entries(statistik.perStatusPengisi).map(([k, v]) => (
+                                <li key={k} className="flex justify-between">
+                                    <span>{k}</span>
+                                    <span className="font-semibold">{v}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* PER STATUS PROSES */}
+                    <div className="border rounded p-3 bg-white">
+                        <p className="text-sm font-semibold mb-2">Status Proses</p>
+                        <ul className="text-sm space-y-1">
+                            {Object.entries(statistik.perStatus).map(([k, v]) => (
+                                <li key={k} className="flex justify-between">
+                                    <span>{statusMeta[k] ?? k}</span>
+                                    <span className="font-semibold">{v}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
 
             {/* DATA */}
             {requests.length === 0 && (
