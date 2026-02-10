@@ -40,8 +40,8 @@ export default function AdminPage() {
     }
 
     async function logout() {
-        await supabase.auth.signOut()
-        router.push('/login')
+        await fetch('/auth/logout', { method: 'POST' })
+        router.replace('/login')
     }
 
     useEffect(() => {

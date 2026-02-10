@@ -24,25 +24,26 @@ export async function proxy(req: NextRequest) {
   )
 
   const {
-    data: { session }
-  } = await supabase.auth.getSession()
+    data: { user }
+  } = await supabase.auth.getUser()
 
   const path = req.nextUrl.pathname
-
   const isAdmin = path.startsWith('/admin')
   const isMajelis = path.startsWith('/majelis')
 
-  // 🔐 Belum login
-  if ((isAdmin || isMajelis) && !session) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  // 🚫 NO SESSION AT ALL → unauthorized
+  if ((isAdmin || isMajelis) && !user) {
+    return NextResponse.redirect(
+      new URL('/unauthorized', req.url)
+    )
   }
 
-  // 🔍 Cek role
-  if (session && (isAdmin || isMajelis)) {
+  // 🔍 CEK ROLE (session ADA)
+  if (isAdmin || isMajelis) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
-      .eq('user_id', session.user.id)
+      .eq('user_id', user!.id)
       .single()
 
     if (!profile) {

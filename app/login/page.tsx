@@ -27,7 +27,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
+    // ✅ redirect SETELAH login sukses
+    router.push('/majelis') // atau /admin
   }
 
   return (
