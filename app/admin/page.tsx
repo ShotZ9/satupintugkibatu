@@ -141,7 +141,7 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
                 {pageLoading ? (
                     <>
                         <SkeletonCard />
