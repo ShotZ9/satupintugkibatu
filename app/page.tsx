@@ -65,8 +65,8 @@ export default function Home() {
               <option>Komisi Pemuda Remaja</option>
               <option>Komisi Muger</option>
               <option>Komisi Anak</option>
-              <option>Jemaat Umum</option>
               <option>Majelis Jemaat</option>
+              <option>Jemaat Umum</option>
               <option>Simpatisan</option>
             </select>
           </div>

@@ -23,6 +23,9 @@ export default function RiwayatMajelisPage() {
     const [requests, setRequests] = useState<any[]>([])
     const [bulan, setBulan] = useState<string>('')
     const [statistik, setStatistik] = useState<Statistik | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [openId, setOpenId] = useState<string | null>(null)
+    const [search, setSearch] = useState('')
 
     const statusMeta: Record<string, string> = {
         menunggu_majelis: 'Menunggu Majelis',
@@ -111,6 +114,8 @@ export default function RiwayatMajelisPage() {
     }
 
     async function loadData() {
+        setLoading(true)
+
         let query = supabase
             .from('requests')
             .select('*')
@@ -133,6 +138,7 @@ export default function RiwayatMajelisPage() {
 
         setRequests(rows)
         setStatistik(hitungStatistik(rows))
+        setLoading(false)
     }
 
     function hitungStatistik(data: any[]): Statistik {
@@ -204,11 +210,34 @@ export default function RiwayatMajelisPage() {
                     "
                 />
             </div>
+            <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Cari Nama Pengisi
+                </label>
+                <input
+                    type="text"
+                    placeholder="Ketik nama..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="
+            w-full md:w-72
+            border border-gray-300
+            bg-white
+            px-3 py-2
+            rounded-xl
+            text-sm
+            text-gray-900
+            focus:outline-none
+            focus:ring-2 focus:ring-black
+            transition
+        "
+                />
+            </div>
 
             {/* STATISTIK */}
             {statistik && (
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
-                    <div className="border border-gray-200 rounded p-3 bg-white shadow-sm">
+                    <div className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300 shadow-sm">
                         <p className="text-sm text-gray-500">
                             Total Permintaan{' '}
                             {bulan ? '(Bulan terfilter)' : '(Semua Arsip)'}
@@ -218,7 +247,7 @@ export default function RiwayatMajelisPage() {
                         </p>
                     </div>
 
-                    <div className="border border-gray-200 rounded p-3 bg-white shadow-sm">
+                    <div className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300 shadow-sm">
                         <p className="text-sm font-semibold text-gray-700 mb-2">
                             Berdasarkan Pengisi
                         </p>
@@ -236,7 +265,7 @@ export default function RiwayatMajelisPage() {
                         </ul>
                     </div>
 
-                    <div className="border border-gray-200 rounded p-3 bg-white shadow-sm">
+                    <div className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300 shadow-sm">
                         <p className="text-sm font-semibold text-gray-700 mb-2">
                             Status Proses
                         </p>
@@ -256,59 +285,124 @@ export default function RiwayatMajelisPage() {
                 </div>
             )}
 
+            {loading && (
+                <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                        <div
+                            key={i}
+                            className="border border-gray-200 bg-white rounded p-4 shadow-sm animate-pulse"
+                        >
+                            <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
+                            <div className="h-3 bg-gray-200 rounded w-1/4 mb-4" />
+
+                            <div className="space-y-2 mb-3">
+                                <div className="h-3 bg-gray-200 rounded w-full" />
+                                <div className="h-3 bg-gray-200 rounded w-5/6" />
+                                <div className="h-3 bg-gray-200 rounded w-2/3" />
+                            </div>
+
+                            <div className="h-12 bg-gray-200 rounded" />
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* DATA */}
-            {requests.length === 0 && (
+            {!loading && requests.length === 0 && (
                 <p className="text-sm text-gray-500">
                     Tidak ada data riwayat.
                 </p>
             )}
 
-            {requests.map((req) => (
-                <div
-                    key={req.id}
-                    className="border border-gray-200 bg-white rounded p-4 mb-4 shadow-sm"
-                >
-                    <div className="mb-2">
-                        <p className="font-bold text-gray-900">
-                            {req.nama_pengisi}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                            {req.status_pengisi}
-                        </p>
-                    </div>
+            {!loading &&
+                requests
+                    .filter((r) =>
+                        r.nama_pengisi
+                            ?.toLowerCase()
+                            .includes(search.toLowerCase())
+                    )
+                    .map((req) => {
+                        const isOpen = openId === req.id
 
-                    <div className="text-sm text-gray-700 space-y-1 mb-2">
-                        <p>
-                            <span className="font-semibold">WhatsApp:</span>{' '}
-                            {req.whatsapp}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Tanggal Diminta:</span>{' '}
-                            {req.tanggal_diminta}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Selesai:</span>{' '}
-                            {new Date(req.selesai_at).toLocaleString()}
-                        </p>
-                        <p>
-                            <span className="font-semibold">Status:</span>{' '}
-                            {statusMeta[req.status]}
-                        </p>
-                    </div>
+                        return (
+                            <div
+                                key={req.id}
+                                className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300"
+                            >
+                                {/* HEADER */}
+                                <div
+                                    onClick={() =>
+                                        setOpenId(isOpen ? null : req.id)
+                                    }
+                                    className="cursor-pointer flex justify-between items-center"
+                                >
+                                    <div>
+                                        <p className="font-bold text-gray-900">
+                                            {req.nama_pengisi}
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            {req.status_pengisi}
+                                        </p>
+                                    </div>
 
-                    <div className="bg-gray-100 border border-gray-200 rounded p-2 text-sm text-gray-800 mb-2">
-                        {req.pesan}
-                    </div>
+                                    <span className="text-sm text-blue-600">
+                                        {isOpen ? 'Tutup ▲' : 'Lihat Detail ▼'}
+                                    </span>
+                                </div>
 
-                    {req.catatan_majelis && (
-                        <div className="text-sm bg-yellow-50 border-l-4 border-yellow-400 p-2 text-gray-800">
-                            <b>Catatan Majelis:</b>
-                            <br />
-                            {req.catatan_majelis}
-                        </div>
+                                {/* COLLAPSIBLE CONTENT */}
+                                <div
+                                    className={`
+        grid transition-all duration-500 ease-in-out
+        ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}
+    `}
+                                >
+                                    <div className="overflow-hidden border-t">
+                                        <div className="text-sm text-gray-700 space-y-1 mt-3 mb-3">
+                                            <p>
+                                                <span className="font-semibold">WhatsApp:</span>{' '}
+                                                {req.whatsapp}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold">Tanggal Diminta:</span>{' '}
+                                                {req.tanggal_diminta}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold">Selesai:</span>{' '}
+                                                {req.selesai_at
+                                                    ? new Date(req.selesai_at).toLocaleString()
+                                                    : '-'}
+                                            </p>
+                                            <p>
+                                                <span className="font-semibold">Status:</span>{' '}
+                                                {statusMeta[req.status]}
+                                            </p>
+                                        </div>
+
+                                        {/* PESAN */}
+                                        <div className="bg-gray-100 border border-gray-200 rounded p-3 text-sm text-gray-800 mb-3 whitespace-pre-wrap">
+                                            {req.pesan}
+                                        </div>
+
+                                        {/* CATATAN */}
+                                        {req.catatan_majelis &&
+                                            req.catatan_majelis.trim() !== '' && (
+                                                <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                                                    <div className="text-sm font-semibold text-yellow-800 mb-1">
+                                                        Catatan Majelis
+                                                    </div>
+                                                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                        {req.catatan_majelis}
+                                                    </div>
+                                                </div>
+                                            )}
+                                    </div>
+                                </div>
+                            </div>
+
+                        )
+                    }
                     )}
-                </div>
-            ))}
-        </main>
+        </main >
     )
 }
