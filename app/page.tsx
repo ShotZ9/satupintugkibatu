@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-neutral-200 p-6">
-        <h1 className="text-2xl font-semibold text-neutral-800">
+        <h1 className="text-2xl font-bold text-neutral-800">
           Satu Pintu GKI Batu
         </h1>
         <p className="text-sm text-neutral-500 mt-1 mb-6">

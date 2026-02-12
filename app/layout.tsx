@@ -1,20 +1,7 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import SessionWatcher from './components/SessionWatcher'
 import Image from "next/image"
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-  display: 'swap'
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-  display: 'swap'
-})
 
 export const metadata: Metadata = {
   title: {
@@ -46,16 +33,15 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body
-        className={`
-          ${geistSans.variable}
-          ${geistMono.variable}
-          antialiased
-          bg-gray-50
-          text-gray-900
-          min-h-screen
-          flex
-          flex-col
-        `}
+        className="
+    antialiased
+    bg-gray-50
+    text-gray-900
+    min-h-screen
+    flex
+    flex-col
+    font-sans
+  "
       >
         <SessionWatcher />
 
@@ -66,7 +52,7 @@ export default function RootLayout({
 
         {/* FOOTER - GLOBAL */}
         <footer className="bg-white border-t border-gray-200">
-          <div className="max-w-6xl mx-auto px-6 py-8">
+          <div className=" mx-auto px-6 py-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-8 text-sm text-gray-600 text-center md:text-left">
 
               {/* Left */}

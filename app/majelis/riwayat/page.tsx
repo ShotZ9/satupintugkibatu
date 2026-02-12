@@ -167,32 +167,46 @@ export default function RiwayatMajelisPage() {
     }, [bulan])
 
     return (
-        <main className="min-h-screen p-4 bg-gray-50">
-            {/* HEADER */}
-            <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-                <h1 className="text-xl font-bold text-gray-900">
-                    Riwayat Permintaan
-                </h1>
+        <main className="min-h-screen bg-neutral-50 p-6">
+            {/* NAVBAR */}
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-neutral-200">
+                <div className="mx-auto px-6 h-16 flex items-center justify-between">
 
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => exportPDF(requests)}
-                        className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
-                    >
-                        Export PDF
-                    </button>
+                    {/* Left */}
+                    <h1 className="text-lg md:text-xl font-semibold text-neutral-800">
+                        Riwayat Permintaan
+                    </h1>
 
-                    <button
-                        onClick={() => router.push('/majelis')}
-                        className="text-sm text-blue-600 hover:underline"
-                    >
-                        Kembali ke Dashboard
-                    </button>
+                    {/* Right */}
+                    <div className="flex items-center gap-4 text-sm">
+
+                        <button
+                            onClick={() => router.push('/majelis')}
+                            className="
+          text-neutral-600
+          hover:text-neutral-900
+          transition
+        "
+                        >
+                            Dashboard
+                        </button>
+                        <button
+                            onClick={() => exportPDF(requests)}
+                            className="
+          px-4 py-2 rounded-xl
+          bg-red-600 text-white
+          hover:bg-red-700
+          transition
+        "
+                        >
+                            Export PDF
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {/* FILTER */}
-            <div className="mb-4">
+            <div className="mt-4 mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Filter Bulan
                 </label>

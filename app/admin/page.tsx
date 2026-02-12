@@ -113,20 +113,32 @@ export default function AdminPage() {
 
     return (
         <main className="min-h-screen bg-neutral-50 p-6">
-            {/* HEADER (SAMA PERSIS MAJELIS) */}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-semibold text-neutral-800">
-                    Dashboard Admin
-                </h1>
+            {/* NAVBAR */}
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-neutral-200">
+                <div className="mx-auto px-6 h-16 flex items-center justify-between">
 
-                <button
-                    onClick={logout}
-                    disabled={logoutLoading}
-                    className="flex items-center gap-2 text-red-600 hover:text-red-700 disabled:opacity-60 text-sm"
-                >
-                    {logoutLoading && <Spinner size={14} />}
-                    {logoutLoading ? 'Keluar...' : 'Logout'}
-                </button>
+                    {/* Left */}
+                    <h1 className="text-lg md:text-xl font-semibold text-neutral-800">
+                        Dashboard Admin
+                    </h1>
+
+                    {/* Right */}
+                    <button
+                        onClick={logout}
+                        disabled={logoutLoading}
+                        className="
+        flex items-center gap-2
+        text-red-600 hover:text-red-700
+        transition
+        disabled:opacity-60
+        text-sm
+      "
+                    >
+                        {logoutLoading && <Spinner size={14} />}
+                        {logoutLoading ? 'Keluar...' : 'Logout'}
+                    </button>
+
+                </div>
             </div>
 
             <div className="space-y-4">

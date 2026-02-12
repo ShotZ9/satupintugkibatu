@@ -115,33 +115,41 @@ export default function MajelisPage() {
 
     return (
         <main className="min-h-screen bg-neutral-50 p-6">
-            {/* HEADER */}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-semibold text-neutral-800">
-                    Dashboard Majelis
-                </h1>
+            {/* NAVBAR */}
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-neutral-200">
+                <div className="mx-auto px-6 h-16 flex items-center justify-between">
 
-                <div className="flex gap-4 text-sm">
-                    <button
-                        onClick={() => router.push('/majelis/riwayat')}
-                        className="text-neutral-600 hover:text-neutral-900"
-                    >
-                        Riwayat
-                    </button>
-                    <button
-                        onClick={logout}
-                        disabled={logoutLoading}
-                        className="flex items-center gap-2 text-red-600 hover:text-red-700 disabled:opacity-60"
-                    >
-                        {logoutLoading && (
-                            <span className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                        )}
-                        {logoutLoading ? 'Keluar...' : 'Logout'}
-                    </button>
+                    {/* Left */}
+                    <h1 className="text-lg md:text-xl font-semibold text-neutral-800">
+                        Dashboard Majelis
+                    </h1>
+
+                    {/* Right */}
+                    <div className="flex items-center gap-6 text-sm">
+
+                        <button
+                            onClick={() => router.push('/majelis/riwayat')}
+                            className="text-neutral-600 hover:text-neutral-900 transition"
+                        >
+                            Riwayat
+                        </button>
+
+                        <button
+                            onClick={logout}
+                            disabled={logoutLoading}
+                            className="flex items-center gap-2 text-red-600 hover:text-red-700 transition disabled:opacity-60"
+                        >
+                            {logoutLoading && (
+                                <span className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                            )}
+                            {logoutLoading ? 'Keluar...' : 'Logout'}
+                        </button>
+
+                    </div>
                 </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
                 {pageLoading ? (
                     <>
                         <SkeletonCard />
