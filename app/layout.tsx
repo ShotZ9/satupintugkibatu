@@ -61,8 +61,8 @@ export default function RootLayout({
                 <Image
                   src="/vm.png"
                   alt="Visi Misi GKI Batu"
-                  width={80}
-                  height={80}
+                  width={70}
+                  height={70}
                   className="object-contain"
                   priority
                 />
