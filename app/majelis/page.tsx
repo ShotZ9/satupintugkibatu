@@ -111,6 +111,26 @@ export default function MajelisPage() {
 
     useEffect(() => {
         loadData()
+
+        const channel = supabase
+            .channel('realtime-requests-majelis')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'requests'
+                },
+                (payload) => {
+                    console.log('Realtime change:', payload)
+                    loadData() // 🔥 auto reload data
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     return (
