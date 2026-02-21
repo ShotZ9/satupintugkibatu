@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import SessionWatcher from './components/SessionWatcher'
 import PWAUpdater from './components/PWAUpdater'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 import Image from "next/image"
 
 export const metadata: Metadata = {
@@ -62,6 +63,7 @@ export default function RootLayout({
       >
         <SessionWatcher />
         <PWAUpdater />
+        <PWAInstallPrompt />
 
         {/* CONTENT */}
         <main className="flex-1 flex flex-col">
