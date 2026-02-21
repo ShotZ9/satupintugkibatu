@@ -157,7 +157,7 @@ export default function Home() {
                 className="overflow-hidden space-y-1"
               >
                 <label className="text-sm text-neutral-600">
-                  Tanggal yang Diminta
+                  Tanggal?? yang Diminta
                 </label>
                 <input
                   type="date"
