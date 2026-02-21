@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 export default function PWAUpdater() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
@@ -37,14 +38,20 @@ export default function PWAUpdater() {
   if (!show) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 z-50">
+    <motion.div
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -100, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="fixed top-[env(safe-area-inset-top)] mt-4 left-1/2 -translate-x-1/2 bg-black text-white px-9 py-3 rounded-xl shadow-lg flex items-center gap-4 z-[9999]"
+    >
       <span>Versi baru tersedia 🚀</span>
       <button
         onClick={updateApp}
-        className="bg-white text-black px-3 py-1 rounded-md text-sm font-semibold"
+        className="bg-white text-black px-3 py-2 rounded-md text-sm font-semibold"
       >
         Update
       </button>
-    </div>
+    </motion.div>
   );
 }
