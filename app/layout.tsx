@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import SessionWatcher from './components/SessionWatcher'
+import PWAUpdater from './components/PWAUpdater'
 import Image from "next/image"
 
 export const metadata: Metadata = {
@@ -60,6 +61,7 @@ export default function RootLayout({
   "
       >
         <SessionWatcher />
+        <PWAUpdater />
 
         {/* CONTENT */}
         <main className="flex-1 flex flex-col">
