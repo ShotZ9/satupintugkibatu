@@ -3,6 +3,7 @@
   "short_name": "SatuPintu",
   "description": "Pelayanan & Aspirasi Jemaat Digital",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#111827",
