@@ -109,6 +109,28 @@ export default function AdminPage() {
 
     useEffect(() => {
         loadData()
+
+        const channel = supabase
+            .channel('realtime-requests-admin')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'requests'
+                },
+                (payload) => {
+                    console.log('🔥 Admin realtime:', payload)
+                    loadData()
+                }
+            )
+            .subscribe((status) => {
+                console.log('Admin subscription:', status)
+            })
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     return (

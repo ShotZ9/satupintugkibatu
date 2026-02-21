@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { AnimatePresence, motion } from 'framer-motion'
 
 export default function Home() {
   const [loading, setLoading] = useState(false)
+  const [jenis, setJenis] = useState<'warta' | 'saran'>('warta')
 
   const inputClass =
     'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm ' +
@@ -16,17 +18,25 @@ export default function Home() {
     setLoading(true)
 
     const form = e.currentTarget
-    const data = {
+
+    const data: any = {
       nama_pengisi: form.nama.value,
       status_pengisi: form.status.value,
       whatsapp: form.whatsapp.value,
       pesan: form.pesan.value,
-      tanggal_diminta: form.tanggal.value
+      jenis: jenis,
+      status: 'menunggu_majelis'
+    }
+
+    if (jenis === 'warta') {
+      data.tanggal_diminta = form.tanggal.value
     }
 
     await supabase.from('requests').insert(data)
+
     alert('Permintaan berhasil dikirim 🙏')
     form.reset()
+    setJenis('warta')
     setLoading(false)
   }
 
@@ -39,7 +49,45 @@ export default function Home() {
         <p className="text-sm text-neutral-500 mt-1 mb-6">
           Silakan isi formulir permintaan dengan lengkap
         </p>
+        <div className="space-y-1">
+          <label className="text-sm text-neutral-600">Jenis Permintaan</label>
 
+          <div className="relative flex rounded-lg border border-neutral-300 bg-white p-1">
+
+            {/* Animated Background */}
+            <motion.div
+              layout
+              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+              className="absolute top-1 bottom-1 w-1/2 rounded-full bg-neutral-900"
+              style={{
+                left: jenis === 'warta' ? '4px' : 'calc(50% - 4px)',
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setJenis('warta')}
+              className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors ${jenis === 'warta'
+                ? 'text-white'
+                : 'text-neutral-600'
+                }`}
+            >
+              Warta Jemaat
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setJenis('saran')}
+              className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors ${jenis === 'saran'
+                ? 'text-white'
+                : 'text-neutral-600'
+                }`}
+            >
+              Kotak Saran
+            </button>
+
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Nama */}
           <div className="space-y-1">
@@ -99,17 +147,27 @@ export default function Home() {
           </div>
 
           {/* Tanggal */}
-          <div className="space-y-1">
-            <label className="text-sm text-neutral-600">
-              Tanggal yang Diminta
-            </label>
-            <input
-              type="date"
-              name="tanggal"
-              required
-              className={inputClass}
-            />
-          </div>
+          <AnimatePresence>
+            {jenis === 'warta' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden space-y-1"
+              >
+                <label className="text-sm text-neutral-600">
+                  Tanggal yang Diminta
+                </label>
+                <input
+                  type="date"
+                  name="tanggal"
+                  required
+                  className={inputClass}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Button */}
           <button

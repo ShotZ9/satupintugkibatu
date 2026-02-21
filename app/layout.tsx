@@ -8,12 +8,24 @@ export const metadata: Metadata = {
     default: 'Satu Pintu GKI Batu',
     template: '%s | Satu Pintu GKI Batu'
   },
-  description:
-    'Sistem satu pintu GKI Batu untuk pengelolaan permintaan, pelayanan, dan administrasi jemaat secara terpusat.',
+  description: "Pelayanan & Aspirasi Jemaat Digital",
   metadataBase: new URL('https://satupintugkibatu.vercel.app'),
+
+  manifest: "/manifest.json",
+
   icons: {
-    icon: '/favicon.ico'
+    icon: '/favicon.ico',
+    apple: '/icons/icon-192x192.png'
   },
+
+  themeColor: '#111827',
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Satu Pintu GKI Batu'
+  },
+
   openGraph: {
     title: 'Satu Pintu GKI Batu',
     description:

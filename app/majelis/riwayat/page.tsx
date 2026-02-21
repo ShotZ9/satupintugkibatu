@@ -29,6 +29,7 @@ export default function RiwayatMajelisPage() {
 
     const statusMeta: Record<string, string> = {
         menunggu_majelis: 'Menunggu Majelis',
+        ditolak_majelis: 'Ditolak',
         menunggu_admin: 'Menunggu Admin',
         dikerjakan_admin: 'Sedang Dikerjakan',
         selesai: 'Selesai'
@@ -375,7 +376,13 @@ export default function RiwayatMajelisPage() {
                                         <div className="text-sm text-gray-700 space-y-1 mt-3 mb-3">
                                             <p>
                                                 <span className="font-semibold">WhatsApp:</span>{' '}
-                                                {req.whatsapp}
+                                                <a
+                                                    href={`https://wa.me/${req.whatsapp}`}
+                                                    target="_blank"
+                                                    className="text-green-600 underline"
+                                                >
+                                                    {req.whatsapp}
+                                                </a>
                                             </p>
                                             <p>
                                                 <span className="font-semibold">Tanggal Diminta:</span>{' '}
@@ -385,7 +392,7 @@ export default function RiwayatMajelisPage() {
                                                 <span className="font-semibold">Selesai:</span>{' '}
                                                 {req.selesai_at
                                                     ? new Date(req.selesai_at).toLocaleString()
-                                                    : '-'}
+                                                    : 'DITOLAK'}
                                             </p>
                                             <p>
                                                 <span className="font-semibold">Status:</span>{' '}

@@ -19,6 +19,18 @@ export default function MajelisPage() {
             label: 'Perlu ACC',
             color: 'bg-yellow-100 text-yellow-800'
         },
+        ditolak_majelis: {
+            label: 'Ditolak',
+            color: 'bg-red-100 text-red-800'
+        },
+        selesai_saran: {
+            label: 'Selesai (Saran)',
+            color: 'bg-green-100 text-green-800'
+        },
+        saran_ditolak: {
+            label: 'Saran Ditolak',
+            color: 'bg-red-100 text-red-800'
+        },
         menunggu_admin: {
             label: 'Menunggu Admin',
             color: 'bg-orange-100 text-orange-800'
@@ -79,25 +91,43 @@ export default function MajelisPage() {
         setPageLoading(false)
     }
 
-    async function acc(id: string) {
-        setActionAccLoading(id)
+    async function acc(req: any) {
+        setActionAccLoading(req.id)
+
+        let newStatus = 'menunggu_admin'
+
+        if (req.jenis === 'saran') {
+            newStatus = 'selesai_saran'
+        }
 
         await supabase
             .from('requests')
             .update({
-                status: 'menunggu_admin',
-                catatan_majelis: catatan[id] || null
+                status: newStatus,
+                catatan_majelis: catatan[req.id] || null
             })
-            .eq('id', id)
+            .eq('id', req.id)
 
-        await loadData()
         setActionAccLoading(null)
     }
 
-    async function reject(id: string) {
-        setActionRejectLoading(id)
-        await supabase.from('requests').delete().eq('id', id)
-        await loadData()
+    async function reject(req: any) {
+        setActionRejectLoading(req.id)
+
+        let newStatus = 'ditolak_majelis'
+
+        if (req.jenis === 'saran') {
+            newStatus = 'saran_ditolak'
+        }
+
+        await supabase
+            .from('requests')
+            .update({
+                status: newStatus,
+                archived: true
+            })
+            .eq('id', req.id)
+
         setActionRejectLoading(null)
     }
 
@@ -117,16 +147,28 @@ export default function MajelisPage() {
             .on(
                 'postgres_changes',
                 {
-                    event: '*',
+                    event: 'INSERT',
                     schema: 'public',
                     table: 'requests'
                 },
-                (payload) => {
-                    console.log('Realtime change:', payload)
-                    loadData() // 🔥 auto reload data
+                () => {
+                    loadData()
                 }
             )
-            .subscribe()
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'requests'
+                },
+                () => {
+                    loadData()
+                }
+            )
+            .subscribe((status) => {
+                console.log('Realtime status:', status)
+            })
 
         return () => {
             supabase.removeChannel(channel)
@@ -197,13 +239,28 @@ export default function MajelisPage() {
                                     </p>
                                 </div>
 
-                                <span
-                                    className={`text-xs px-3 py-1 rounded-full ${statusMeta[req.status]?.color}`}
-                                >
-                                    {statusMeta[req.status]?.label}
-                                </span>
-                            </div>
+                                {/* RIGHT BADGES */}
+                                <div className="flex flex-col items-end gap-2">
 
+                                    {/* JENIS */}
+                                    <span
+                                        className={`text-xs px-3 py-1 rounded-full font-medium ${req.jenis === 'warta'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-purple-100 text-purple-700'
+                                            }`}
+                                    >
+                                        {req.jenis === 'warta' ? 'Warta Jemaat' : 'Kotak Saran'}
+                                    </span>
+
+                                    {/* STATUS */}
+                                    <span
+                                        className={`text-xs px-3 py-1 rounded-full ${statusMeta[req.status]?.color}`}
+                                    >
+                                        {statusMeta[req.status]?.label}
+                                    </span>
+
+                                </div>
+                            </div>
                             {/* DETAIL */}
                             <div className="text-sm text-neutral-700 space-y-1 mb-3">
                                 <p>
@@ -247,7 +304,7 @@ export default function MajelisPage() {
 
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => acc(req.id)}
+                                            onClick={() => acc(req)}
                                             disabled={actionAccLoading === req.id}
                                             className="flex items-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2 text-sm hover:bg-green-800 disabled:opacity-60"
                                         >
@@ -256,7 +313,7 @@ export default function MajelisPage() {
                                         </button>
 
                                         <button
-                                            onClick={() => reject(req.id)}
+                                            onClick={() => reject(req)}
                                             disabled={actionRejectLoading === req.id}
                                             className="flex items-center gap-2 rounded-lg bg-red-600 text-white px-4 py-2 text-sm hover:bg-red-800 disabled:opacity-60"
                                         >
