@@ -37,7 +37,7 @@ export default function PWAUpdater() {
   if (!show) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 z-50">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-4 z-50">
       <span>Versi baru tersedia 🚀</span>
       <button
         onClick={updateApp}
