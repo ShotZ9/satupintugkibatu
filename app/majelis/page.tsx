@@ -7,12 +7,50 @@ import Spinner from '../components/Spinner'
 
 export default function MajelisPage() {
     const router = useRouter()
+    const [allRequests, setAllRequests] = useState<any[]>([])
     const [requests, setRequests] = useState<any[]>([])
+    const [search, setSearch] = useState('')
     const [catatan, setCatatan] = useState<Record<string, string>>({})
     const [logoutLoading, setLogoutLoading] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
     const [actionAccLoading, setActionAccLoading] = useState<string | null>(null)
     const [actionRejectLoading, setActionRejectLoading] = useState<string | null>(null)
+    const [filter, setFilter] = useState<'all' | 'warta' | 'saran'>('all')
+
+    const filteredRequests = requests
+        .filter((r) => {
+            if (filter === 'all') return true
+            return r.jenis === filter
+        })
+        .filter((r) => {
+            if (!search) return true
+
+            const keyword = search.toLowerCase()
+
+            return Object.values(r).some((val) =>
+                String(val ?? '')
+                    .toLowerCase()
+                    .includes(keyword)
+            )
+        })
+
+    const pendingWarta = requests.filter(
+        (r) => r.jenis === 'warta' && r.status === 'menunggu_majelis'
+    ).length
+
+    const pendingSaran = requests.filter(
+        (r) => r.jenis === 'saran' && r.status === 'menunggu_majelis'
+    ).length
+
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const bulanIni = allRequests.filter(
+        (r) => new Date(r.tanggal_pengajuan) >= startOfMonth
+    )
+
+    const totalWartaBulanIni = bulanIni.filter(r => r.jenis === 'warta').length
+    const totalSaranBulanIni = bulanIni.filter(r => r.jenis === 'saran').length
 
     const statusMeta: Record<string, { label: string; color: string }> = {
         menunggu_majelis: {
@@ -21,14 +59,6 @@ export default function MajelisPage() {
         },
         ditolak_majelis: {
             label: 'Ditolak',
-            color: 'bg-red-100 text-red-800'
-        },
-        selesai_saran: {
-            label: 'Selesai (Saran)',
-            color: 'bg-green-100 text-green-800'
-        },
-        saran_ditolak: {
-            label: 'Saran Ditolak',
             color: 'bg-red-100 text-red-800'
         },
         menunggu_admin: {
@@ -75,59 +105,78 @@ export default function MajelisPage() {
     async function loadData() {
         setPageLoading(true)
 
-        const tigaHariLalu = new Date()
-        tigaHariLalu.setDate(tigaHariLalu.getDate() - 3)
-
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('requests')
             .select('*')
-            .eq('archived', false)
-            .or(
-                `status.neq.selesai,and(status.eq.selesai,selesai_at.gte.${tigaHariLalu.toISOString()})`
-            )
             .order('tanggal_pengajuan', { ascending: false })
 
-        setRequests(data || [])
+        if (error) {
+            console.error(error)
+            setPageLoading(false)
+            return
+        }
+
+        const allData = data || []
+
+        setAllRequests(allData)
+
+        const activeRequests = allData.filter(
+            (r) => !r.archived && r.status !== 'selesai'
+        )
+
+        setRequests(activeRequests)
         setPageLoading(false)
     }
 
     async function acc(req: any) {
         setActionAccLoading(req.id)
 
-        let newStatus = 'menunggu_admin'
+        const isSaran = req.jenis === 'saran'
+        const newStatus = isSaran ? 'selesai' : 'menunggu_admin'
 
-        if (req.jenis === 'saran') {
-            newStatus = 'selesai_saran'
+        const updateData: any = {
+            status: newStatus,
+            catatan_majelis: req.jenis === 'warta'
+                ? catatan[req.id] || null
+                : null
         }
 
-        await supabase
+        // kalau selesai → set selesai_at + archived
+        if (newStatus === 'selesai') {
+            updateData.selesai_at = new Date().toISOString()
+            updateData.archived = true
+        }
+
+        const { error } = await supabase
             .from('requests')
-            .update({
-                status: newStatus,
-                catatan_majelis: catatan[req.id] || null
-            })
+            .update(updateData)
             .eq('id', req.id)
 
+        if (error) {
+            alert('Gagal ACC: ' + error.message)
+        }
+
+        await loadData()
         setActionAccLoading(null)
     }
 
     async function reject(req: any) {
         setActionRejectLoading(req.id)
 
-        let newStatus = 'ditolak_majelis'
-
-        if (req.jenis === 'saran') {
-            newStatus = 'saran_ditolak'
-        }
-
-        await supabase
+        const { error } = await supabase
             .from('requests')
             .update({
-                status: newStatus,
-                archived: true
+                status: 'ditolak_majelis',
+                archived: true,
+                selesai_at: new Date().toISOString()
             })
             .eq('id', req.id)
 
+        if (error) {
+            alert('Gagal Tolak: ' + error.message)
+        }
+
+        await loadData()
         setActionRejectLoading(null)
     }
 
@@ -210,6 +259,83 @@ export default function MajelisPage() {
                     </div>
                 </div>
             </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4">
+
+                {/* FILTER BUTTONS */}
+                <div className="flex gap-2">
+                    {['all', 'warta', 'saran'].map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f as any)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition
+                ${filter === f
+                                    ? 'bg-neutral-900 text-white'
+                                    : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'
+                                }`}
+                        >
+                            {f === 'all' ? 'Semua' : f === 'warta' ? 'Warta' : 'Saran'}
+                        </button>
+                    ))}
+                </div>
+
+                {/* SEARCH */}
+                <div className="relative w-full md:w-72">
+                    <input
+                        type="text"
+                        placeholder="Cari request..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-sm
+                       text-neutral-900 placeholder:text-neutral-400
+                       focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    />
+
+                    {search && (
+                        <button
+                            onClick={() => setSearch('')}
+                            className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-700 text-sm"
+                        >
+                            ✕
+                        </button>
+                    )}
+                </div>
+
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+
+                {/* Warta Pending */}
+                <div className="bg-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-neutral-500">Warta Pending</p>
+                    <p className="text-2xl font-semibold text-neutral-800">
+                        {pendingWarta}
+                    </p>
+                </div>
+
+                {/* Saran Pending */}
+                <div className="bg-purple-100 border border-purple-200 border rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-neutral-500">Saran Pending</p>
+                    <p className="text-2xl font-semibold text-neutral-800">
+                        {pendingSaran}
+                    </p>
+                </div>
+
+                {/* Warta Bulan Ini */}
+                <div className="bg-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-neutral-500">Warta Bulan Ini</p>
+                    <p className="text-2xl font-semibold text-neutral-800">
+                        {totalWartaBulanIni}
+                    </p>
+                </div>
+
+                {/* Saran Bulan Ini */}
+                <div className="bg-purple-100 border border-purple-200 border rounded-xl p-4 shadow-sm">
+                    <p className="text-sm text-neutral-500">Saran Bulan Ini</p>
+                    <p className="text-2xl font-semibold text-neutral-800">
+                        {totalSaranBulanIni}
+                    </p>
+                </div>
+
+            </div>
 
             <div className="space-y-4 mt-4">
                 {pageLoading ? (
@@ -223,7 +349,7 @@ export default function MajelisPage() {
                         Tidak ada permintaan saat ini
                     </div>
                 ) : (
-                    requests.map((req) => (
+                    filteredRequests.map((req) => (
                         <div
                             key={req.id}
                             className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
@@ -245,8 +371,8 @@ export default function MajelisPage() {
                                     {/* JENIS */}
                                     <span
                                         className={`text-xs px-3 py-1 rounded-full font-medium ${req.jenis === 'warta'
-                                                ? 'bg-blue-100 text-blue-700'
-                                                : 'bg-purple-100 text-purple-700'
+                                            ? 'bg-blue-100 text-blue-700'
+                                            : 'bg-purple-100 text-purple-700'
                                             }`}
                                     >
                                         {req.jenis === 'warta' ? 'Warta Jemaat' : 'Kotak Saran'}
@@ -273,10 +399,11 @@ export default function MajelisPage() {
                                         {req.whatsapp}
                                     </a>
                                 </p>
-                                <p>
+                                {req.jenis === 'warta' && (<p>
                                     <span className="font-medium">Tanggal Diminta:</span>{' '}
                                     {req.tanggal_diminta}
                                 </p>
+                                )}
                                 <p className="text-neutral-500">
                                     Diajukan:{' '}
                                     {new Date(req.tanggal_pengajuan).toLocaleString()}
@@ -291,16 +418,18 @@ export default function MajelisPage() {
                             {/* ACTION */}
                             {req.status === 'menunggu_majelis' && (
                                 <>
-                                    <textarea
-                                        placeholder="Catatan untuk admin (opsional)"
-                                        className="w-full mb-3 rounded-lg border border-neutral-300 px-3 py-2 text-sm
+                                    {req.jenis === 'warta' && (
+                                        <textarea
+                                            placeholder="Catatan untuk admin (opsional)"
+                                            className="w-full mb-3 rounded-lg border border-neutral-300 px-3 py-2 text-sm
                              text-neutral-900 placeholder:text-neutral-500
                              focus:outline-none focus:ring-2 focus:ring-neutral-800"
-                                        value={catatan[req.id] || ''}
-                                        onChange={(e) =>
-                                            setCatatan({ ...catatan, [req.id]: e.target.value })
-                                        }
-                                    />
+                                            value={catatan[req.id] || ''}
+                                            onChange={(e) =>
+                                                setCatatan({ ...catatan, [req.id]: e.target.value })
+                                            }
+                                        />
+                                    )}
 
                                     <div className="flex gap-2">
                                         <button

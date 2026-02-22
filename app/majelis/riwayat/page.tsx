@@ -20,12 +20,39 @@ type Statistik = {
 export default function RiwayatMajelisPage() {
     const router = useRouter()
 
+    const [tahun, setTahun] = useState('')
+    const [jenisFilter, setJenisFilter] = useState<'all' | 'warta' | 'saran'>('all')
     const [requests, setRequests] = useState<any[]>([])
     const [bulan, setBulan] = useState<string>('')
     const [statistik, setStatistik] = useState<Statistik | null>(null)
     const [loading, setLoading] = useState(true)
     const [openId, setOpenId] = useState<string | null>(null)
     const [search, setSearch] = useState('')
+
+    const filteredRequests = requests
+        .filter((r) => {
+            if (jenisFilter === 'all') return true
+            return r.jenis === jenisFilter
+        })
+        .filter((r) => {
+            if (!search) return true
+
+            const keyword = search.toLowerCase()
+
+            return Object.values(r).some((val) =>
+                String(val ?? '')
+                    .toLowerCase()
+                    .includes(keyword)
+            )
+        })
+
+    function formatTanggal(dateString?: string) {
+        if (!dateString) return '-'
+
+        const date = new Date(dateString)
+
+        return date.toLocaleDateString('id-ID')
+    }
 
     const statusMeta: Record<string, string> = {
         menunggu_majelis: 'Menunggu Majelis',
@@ -38,40 +65,35 @@ export default function RiwayatMajelisPage() {
     async function exportPDF(data: any[]) {
         const doc = new jsPDF()
 
-        // ===== JUDUL =====
         doc.setFontSize(14)
-        doc.text('Riwayat Permintaan', 14, 15)
+        doc.text('Riwayat Permintaan GKI Batu', 14, 15)
 
-        // ===== STATISTIK =====
-        if (statistik) {
-            doc.setFontSize(10)
-            doc.text(`Total Permintaan: ${statistik.total}`, 14, 25)
+        doc.setFontSize(10)
+        doc.text(
+            `Periode: ${tahun || 'Semua Tahun'} ${bulan ? ' - ' + bulan : ''}`,
+            14,
+            22
+        )
 
-            // ===== GRAFIK =====
-            const chartImg = await generateChartImage(statistik)
-            doc.addImage(chartImg, 'PNG', 14, 30, 80, 60)
-        }
-
-        // ===== TABLE =====
         autoTable(doc, {
-            startY: statistik ? 100 : 30,
+            startY: 30,
             head: [[
                 'Nama',
+                'Jenis',
                 'Status',
-                'WhatsApp',
+                'WA',
                 'Pesan',
                 'Tgl Diminta',
                 'Tgl Selesai'
             ]],
             body: data.map((r) => [
                 r.nama_pengisi,
-                r.status_pengisi,
+                r.jenis?.toUpperCase(),
+                statusMeta[r.status] ?? r.status,
                 r.whatsapp,
                 r.pesan,
-                r.tanggal_diminta,
-                r.selesai_at
-                    ? new Date(r.selesai_at).toLocaleDateString()
-                    : ''
+                formatTanggal(r.tanggal_diminta),
+                formatTanggal(r.selesai_at)
             ])
         })
 
@@ -123,10 +145,15 @@ export default function RiwayatMajelisPage() {
             .eq('archived', true)
             .order('selesai_at', { ascending: false })
 
-        // filter per bulan (YYYY-MM)
+        if (tahun) {
+            query = query
+                .gte('selesai_at', `${tahun}-01-01`)
+                .lt('selesai_at', `${Number(tahun) + 1}-01-01`)
+        }
+
         if (bulan) {
             const start = `${bulan}-01`
-            const end = new Date(`${bulan}-01`)
+            const end = new Date(start)
             end.setMonth(end.getMonth() + 1)
 
             query = query
@@ -192,7 +219,7 @@ export default function RiwayatMajelisPage() {
                             Dashboard
                         </button>
                         <button
-                            onClick={() => exportPDF(requests)}
+                            onClick={() => exportPDF(filteredRequests)}
                             className="
           px-4 py-2 rounded-xl
           bg-red-600 text-white
@@ -206,47 +233,62 @@ export default function RiwayatMajelisPage() {
                 </div>
             </div>
 
-            {/* FILTER */}
-            <div className="mt-4 mb-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Filter Bulan
-                </label>
-                <input
-                    type="month"
-                    value={bulan}
-                    onChange={(e) => setBulan(e.target.value)}
-                    className="
-                        border border-gray-300
-                        bg-white
-                        px-2 py-1 rounded
-                        text-gray-900
-                        focus:outline-none
-                        focus:ring-2 focus:ring-black
-                    "
-                />
-            </div>
-            <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Cari Nama Pengisi
-                </label>
-                <input
-                    type="text"
-                    placeholder="Ketik nama..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="
-            w-full md:w-72
-            border border-gray-300
-            bg-white
-            px-3 py-2
-            rounded-xl
-            text-sm
-            text-gray-900
-            focus:outline-none
-            focus:ring-2 focus:ring-black
-            transition
-        "
-                />
+            <div className="flex flex-wrap items-end gap-4 mt-2 mb-4">
+
+                {/* TAHUN */}
+                <div>
+                    <label className="block text-sm font-semibold mb-1 text-neutral-800">Tahun</label>
+                    <input
+                        type="number"
+                        placeholder="2026"
+                        value={tahun}
+                        onChange={(e) => setTahun(e.target.value)}
+                        className="border px-3 py-2 rounded-lg text-sm text-neutral-800"
+                    />
+                </div>
+
+                {/* BULAN */}
+                <div>
+                    <label className="block text-sm font-semibold mb-1 text-neutral-800">Bulan</label>
+                    <input
+                        type="month"
+                        value={bulan}
+                        onChange={(e) => setBulan(e.target.value)}
+                        className="border px-3 py-2 rounded-lg text-sm text-neutral-800"
+                    />
+                </div>
+
+                {/* JENIS */}
+                <div>
+                    <label className="block text-sm font-semibold mb-1 text-neutral-800">Jenis</label>
+                    <div className="flex gap-2">
+                        {['all', 'warta', 'saran'].map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setJenisFilter(f as any)}
+                                className={`px-3 py-2 rounded-lg text-sm
+                        ${jenisFilter === f
+                                        ? 'bg-neutral-900 text-white'
+                                        : 'bg-white border text-neutral-600'
+                                    }`}
+                            >
+                                {f === 'all' ? 'Semua' : f === 'warta' ? 'Warta' : 'Saran'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* SEARCH */}
+                <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-semibold mb-1 text-neutral-800">Search</label>
+                    <input
+                        type="text"
+                        placeholder="Cari semua field..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full border px-3 py-2 rounded-lg text-sm text-neutral-800"
+                    />
+                </div>
             </div>
 
             {/* STATISTIK */}
@@ -255,7 +297,7 @@ export default function RiwayatMajelisPage() {
                     <div className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300 shadow-sm">
                         <p className="text-sm text-gray-500">
                             Total Permintaan{' '}
-                            {bulan ? '(Bulan terfilter)' : '(Semua Arsip)'}
+                            {bulan ? '(Terfilter)' : '(Semua Arsip)'}
                         </p>
                         <p className="text-2xl font-bold text-gray-900">
                             {statistik.total}
@@ -330,100 +372,102 @@ export default function RiwayatMajelisPage() {
             )}
 
             {!loading &&
-                requests
-                    .filter((r) =>
-                        r.nama_pengisi
-                            ?.toLowerCase()
-                            .includes(search.toLowerCase())
-                    )
-                    .map((req) => {
-                        const isOpen = openId === req.id
+                filteredRequests.map((req) => {
+                    const isOpen = openId === req.id
 
-                        return (
+                    return (
+                        <div
+                            key={req.id}
+                            className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300"
+                        >
+                            {/* HEADER */}
                             <div
-                                key={req.id}
-                                className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300"
+                                onClick={() =>
+                                    setOpenId(isOpen ? null : req.id)
+                                }
+                                className="cursor-pointer flex justify-between items-center"
                             >
-                                {/* HEADER */}
-                                <div
-                                    onClick={() =>
-                                        setOpenId(isOpen ? null : req.id)
-                                    }
-                                    className="cursor-pointer flex justify-between items-center"
-                                >
-                                    <div>
-                                        <p className="font-bold text-gray-900">
-                                            {req.nama_pengisi}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            {req.status_pengisi}
-                                        </p>
-                                    </div>
-
-                                    <span className="text-sm text-blue-600">
-                                        {isOpen ? 'Tutup ▲' : 'Lihat Detail ▼'}
+                                <div>
+                                    <span
+                                        className={`text-xs uppercase font-semibold ${req.jenis === 'warta'
+                                            ? 'text-blue-700'
+                                            : 'text-purple-700'
+                                            }`}
+                                    >
+                                        {req.jenis === 'warta' ? 'Warta Jemaat' : 'Kotak Saran'}
                                     </span>
+                                    <p className="font-bold text-gray-900">
+                                        {req.nama_pengisi}
+                                    </p>
+                                    <p className="text-sm text-gray-500">
+                                        {req.status_pengisi}
+                                    </p>
                                 </div>
 
-                                {/* COLLAPSIBLE CONTENT */}
-                                <div
-                                    className={`
+                                <span className="text-sm text-blue-600">
+                                    {isOpen ? 'Tutup ▲' : 'Lihat Detail ▼'}
+                                </span>
+                            </div>
+
+                            {/* COLLAPSIBLE CONTENT */}
+                            <div
+                                className={`
         grid transition-all duration-500 ease-in-out
         ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-3' : 'grid-rows-[0fr] opacity-0'}
     `}
-                                >
-                                    <div className="overflow-hidden border-t">
-                                        <div className="text-sm text-gray-700 space-y-1 mt-3 mb-3">
-                                            <p>
-                                                <span className="font-semibold">WhatsApp:</span>{' '}
-                                                <a
-                                                    href={`https://wa.me/${req.whatsapp}`}
-                                                    target="_blank"
-                                                    className="text-green-600 underline"
-                                                >
-                                                    {req.whatsapp}
-                                                </a>
-                                            </p>
-                                            <p>
-                                                <span className="font-semibold">Tanggal Diminta:</span>{' '}
-                                                {req.tanggal_diminta}
-                                            </p>
-                                            <p>
-                                                <span className="font-semibold">Selesai:</span>{' '}
-                                                {req.selesai_at
-                                                    ? new Date(req.selesai_at).toLocaleString()
-                                                    : 'DITOLAK'}
-                                            </p>
-                                            <p>
-                                                <span className="font-semibold">Status:</span>{' '}
-                                                {statusMeta[req.status]}
-                                            </p>
-                                        </div>
-
-                                        {/* PESAN */}
-                                        <div className="bg-gray-100 border border-gray-200 rounded p-3 text-sm text-gray-800 mb-3 whitespace-pre-wrap">
-                                            {req.pesan}
-                                        </div>
-
-                                        {/* CATATAN */}
-                                        {req.catatan_majelis &&
-                                            req.catatan_majelis.trim() !== '' && (
-                                                <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
-                                                    <div className="text-sm font-semibold text-yellow-800 mb-1">
-                                                        Catatan Majelis
-                                                    </div>
-                                                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                                                        {req.catatan_majelis}
-                                                    </div>
-                                                </div>
-                                            )}
+                            >
+                                <div className="overflow-hidden border-t">
+                                    <div className="text-sm text-gray-700 space-y-1 mt-3 mb-3">
+                                        <p>
+                                            <span className="font-semibold">WhatsApp:</span>{' '}
+                                            <a
+                                                href={`https://wa.me/${req.whatsapp}`}
+                                                target="_blank"
+                                                className="text-green-600 underline"
+                                            >
+                                                {req.whatsapp}
+                                            </a>
+                                        </p>
+                                        {req.jenis === 'warta' && (<p>
+                                            <span className="font-semibold">Tanggal Diminta:</span>{' '}
+                                            {formatTanggal(req.tanggal_diminta)}
+                                        </p>)}
+                                        <p>
+                                            <span className="font-semibold">Selesai:</span>{' '}
+                                            {req.selesai_at
+                                                ? formatTanggal(req.selesai_at)
+                                                : '-'}
+                                        </p>
+                                        <p>
+                                            <span className="font-semibold">Status:</span>{' '}
+                                            {statusMeta[req.status]}
+                                        </p>
                                     </div>
+
+                                    {/* PESAN */}
+                                    <div className="bg-gray-100 border border-gray-200 rounded p-3 text-sm text-gray-800 mb-3 whitespace-pre-wrap">
+                                        {req.pesan}
+                                    </div>
+
+                                    {/* CATATAN */}
+                                    {req.catatan_majelis &&
+                                        req.catatan_majelis.trim() !== '' && (
+                                            <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                                                <div className="text-sm font-semibold text-yellow-800 mb-1">
+                                                    Catatan Majelis
+                                                </div>
+                                                <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                    {req.catatan_majelis}
+                                                </div>
+                                            </div>
+                                        )}
                                 </div>
                             </div>
+                        </div>
 
-                        )
-                    }
-                    )}
+                    )
+                }
+                )}
         </main >
     )
 }

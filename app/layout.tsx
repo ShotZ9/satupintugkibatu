@@ -3,6 +3,7 @@ import './globals.css'
 import SessionWatcher from './components/SessionWatcher'
 import PWAToastManager from './components/PWAToastManager'
 import Image from "next/image"
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: {
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 
   icons: {
     icon: '/favicon.ico',
-    apple: '/icons/icon-192x192.png'
+    apple: '/icon192.png'
   },
 
   themeColor: '#111827',
@@ -36,10 +37,6 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     type: 'website'
   }
-}
-
-export const viewport = {
-  themeColor: '#111827',
 }
 
 export default function RootLayout({
@@ -76,14 +73,16 @@ export default function RootLayout({
               {/* Left */}
               <div className="flex flex-col md:flex-row items-center md:items-start gap-3">
 
-                <Image
-                  src="/vm.png"
-                  alt="Visi Misi GKI Batu"
-                  width={70}
-                  height={70}
-                  className="object-contain"
-                  priority
-                />
+                <Link href="/login" className="inline-block">
+                  <Image
+                    src="/vm.png"
+                    alt="Visi Misi GKI Batu"
+                    width={70}
+                    height={70}
+                    className="object-contain cursor-pointer"
+                    priority
+                  />
+                </Link>
 
                 <div className="text-center md:text-left">
                   <h3 className="font-semibold text-gray-800">
