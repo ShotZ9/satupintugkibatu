@@ -112,7 +112,7 @@ export default function RootLayout({
               <div className="flex flex-col items-center md:items-end text-gray-500">
                 <p>Versi 1.0.0</p>
                 <p className="mt-1">
-                  Dikembangkan oleh Tim IT GKI Batu
+                  Dikembangkan oleh Multimedia GKI Batu
                 </p>
               </div>
 
