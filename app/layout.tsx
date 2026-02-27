@@ -61,7 +61,7 @@ export default function RootLayout({
         <PWAToastManager />
 
         {/* CONTENT */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col bg-[#F7EEE5]">
           {children}
         </main>
 
@@ -110,9 +110,9 @@ export default function RootLayout({
 
               {/* Right */}
               <div className="flex flex-col items-center md:items-end text-gray-500">
-                <p>Versi 1.0.0</p>
+                {/* <p>Versi 1.0.0</p> */}
                 <p className="mt-1">
-                  Dikembangkan oleh Multimedia GKI Batu
+                  Dikembangkan oleh<br />Multimedia GKI Batu
                 </p>
               </div>
 

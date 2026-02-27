@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-// import * as XLSX from 'xlsx'
-// import { saveAs } from 'file-saver'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
 
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { Chart } from 'chart.js/auto'
+import { motion, AnimatePresence } from 'framer-motion'
 
 type Statistik = {
     total: number
@@ -28,6 +28,11 @@ export default function RiwayatMajelisPage() {
     const [loading, setLoading] = useState(true)
     const [openId, setOpenId] = useState<string | null>(null)
     const [search, setSearch] = useState('')
+    const [openExport, setOpenExport] = useState(false)
+    const [exportTahun, setExportTahun] = useState('')
+    const [exportBulan, setExportBulan] = useState('')
+    const [exportJenis, setExportJenis] = useState<'all' | 'warta' | 'saran'>('all')
+    const [exportVisible, setExportVisible] = useState(false)
 
     const filteredRequests = requests
         .filter((r) => {
@@ -62,31 +67,98 @@ export default function RiwayatMajelisPage() {
         selesai: 'Selesai'
     }
 
-    async function exportPDF(data: any[]) {
-        const doc = new jsPDF()
+    async function getExportData() {
+        let query = supabase
+            .from('requests')
+            .select('*')
+            .eq('archived', true)
+
+        if (exportTahun) {
+            query = query
+                .gte('selesai_at', `${exportTahun}-01-01`)
+                .lt('selesai_at', `${Number(exportTahun) + 1}-01-01`)
+        }
+
+        if (exportBulan) {
+            const start = `${exportBulan}-01`
+            const end = new Date(start)
+            end.setMonth(end.getMonth() + 1)
+
+            query = query
+                .gte('selesai_at', start)
+                .lt('selesai_at', end.toISOString())
+        }
+
+        const { data } = await query
+        let rows = data || []
+
+        if (exportJenis !== 'all') {
+            rows = rows.filter(r => r.jenis?.toLowerCase() === exportJenis)
+        }
+
+        return rows
+    }
+
+    function sortByJenis(data: any[]) {
+        return data.sort((a, b) => {
+            if (a.jenis === b.jenis) return 0
+            if (a.jenis === 'warta') return -1
+            return 1
+        })
+    }
+
+    async function exportPDF() {
+        let rows = await getExportData()
+        rows = sortByJenis(rows)
+        const stat = hitungStatistik(rows)
+
+        const orientation = rows.length > 20 ? 'landscape' : 'portrait'
+
+        const doc = new jsPDF({
+            orientation,
+            unit: 'mm',
+            format: 'a4'
+        })
+
+        const logo = await loadLogo()
+
+        // ===== HEADER =====
+        doc.addImage(logo, 'PNG', 14, 10, 20, 20)
 
         doc.setFontSize(14)
-        doc.text('Riwayat Permintaan GKI Batu', 14, 15)
+        doc.text('GKI Batu', 40, 18)
 
-        doc.setFontSize(10)
+        doc.setFontSize(11)
+        doc.text('Riwayat Permintaan', 40, 24)
+
+        doc.setFontSize(9)
         doc.text(
-            `Periode: ${tahun || 'Semua Tahun'} ${bulan ? ' - ' + bulan : ''}`,
-            14,
-            22
+            `Periode: ${exportTahun || 'Semua Tahun'} ${exportBulan ? '- ' + exportBulan : ''}`,
+            40,
+            29
         )
 
+        // ===== STATISTIK =====
+        let y = 40
+        doc.setFontSize(10)
+        doc.text(`Total: ${stat.total}`, 14, y)
+        y += 6
+
+        Object.entries(stat.perJenis).forEach(([k, v]) => {
+            doc.text(`${k.toUpperCase()}: ${v}`, 14, y)
+            y += 5
+        })
+
+        y += 4
+
+        // ===== TABLE =====
         autoTable(doc, {
-            startY: 30,
+            startY: y,
             head: [[
-                'Nama',
-                'Jenis',
-                'Status',
-                'WA',
-                'Pesan',
-                'Tgl Diminta',
-                'Tgl Selesai'
+                'Nama', 'Jenis', 'Status', 'WA',
+                'Pesan', 'Tgl Diminta', 'Tgl Selesai'
             ]],
-            body: data.map((r) => [
+            body: rows.map(r => [
                 r.nama_pengisi,
                 r.jenis?.toUpperCase(),
                 statusMeta[r.status] ?? r.status,
@@ -94,46 +166,104 @@ export default function RiwayatMajelisPage() {
                 r.pesan,
                 formatTanggal(r.tanggal_diminta),
                 formatTanggal(r.selesai_at)
-            ])
+            ]),
+            didDrawPage: (data) => {
+                const pageCount = doc.getNumberOfPages()
+                const pageSize = doc.internal.pageSize
+                const pageHeight = pageSize.height || pageSize.getHeight()
+
+                doc.setFontSize(8)
+
+                // Footer kiri
+                doc.text(
+                    `Dicetak pada: ${new Date().toLocaleString('id-ID')}`,
+                    14,
+                    pageHeight - 10
+                )
+
+                // Footer kanan
+                doc.text(
+                    `Halaman ${doc.getCurrentPageInfo().pageNumber} dari ${pageCount}`,
+                    pageSize.width - 14,
+                    pageHeight - 10,
+                    { align: 'right' }
+                )
+            }
         })
 
-        doc.save('riwayat-permintaan.pdf')
+        doc.save(generateFileName('pdf'))
     }
 
-    async function generateChartImage(statistik: Statistik) {
-        return new Promise<string>((resolve) => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 400
-            canvas.height = 300
+    async function exportExcel() {
+        let rows = await getExportData()
+        rows = sortByJenis(rows)
+        const stat = hitungStatistik(rows)
 
-            const ctx = canvas.getContext('2d')!
+        const formatted = rows.map(r => ({
+            Nama: r.nama_pengisi,
+            Jenis: r.jenis?.toUpperCase(),
+            Status: statusMeta[r.status] ?? r.status,
+            WA: r.whatsapp,
+            Pesan: r.pesan,
+            Tgl_Diminta: formatTanggal(r.tanggal_diminta),
+            Tgl_Selesai: formatTanggal(r.selesai_at)
+        }))
 
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(statistik.perStatus),
-                    datasets: [
-                        {
-                            label: 'Jumlah Permintaan',
-                            data: Object.values(statistik.perStatus),
-                        }
-                    ]
-                },
-                options: {
-                    responsive: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            })
+        const wsData = XLSX.utils.json_to_sheet(formatted)
 
-            // tunggu render
-            setTimeout(() => {
-                resolve(canvas.toDataURL('image/png'))
-            }, 500)
+        const statSheet = XLSX.utils.json_to_sheet([
+            { Kategori: 'Total', Jumlah: stat.total },
+            ...Object.entries(stat.perJenis).map(([k, v]) => ({
+                Kategori: `Jenis - ${k}`,
+                Jumlah: v
+            }))
+        ])
+
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, wsData, 'Data')
+        XLSX.utils.book_append_sheet(wb, statSheet, 'Statistik')
+
+        const excelBuffer = XLSX.write(wb, {
+            bookType: 'xlsx',
+            type: 'array'
         })
+
+        const file = new Blob([excelBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+
+        saveAs(file, generateFileName('xlsx'))
+    }
+
+    function generateFileName(ext: 'pdf' | 'xlsx') {
+        const parts = ['riwayat-permintaan']
+
+        if (exportTahun) parts.push(exportTahun)
+
+        if (exportBulan) parts.push(exportBulan)
+
+        if (exportJenis !== 'all') parts.push(exportJenis)
+
+        return parts.join('-') + '.' + ext
+    }
+
+    async function loadLogo() {
+        const response = await fetch('/vm.png')
+        const blob = await response.blob()
+
+        return new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(blob)
+        })
+    }
+
+    function closeExportModal() {
+        setExportVisible(false)
+
+        setTimeout(() => {
+            setOpenExport(false)
+        }, 200) // sesuai durasi animasi
     }
 
     async function loadData() {
@@ -169,24 +299,27 @@ export default function RiwayatMajelisPage() {
         setLoading(false)
     }
 
-    function hitungStatistik(data: any[]): Statistik {
-        const perStatusPengisi: Record<string, number> = {}
-        const perStatus: Record<string, number> = {}
+    function hitungStatistik(data: any[]) {
+        const perStatusPengisi: any = {}
+        const perStatus: any = {}
+        const perJenis: any = {}
 
-        data.forEach((r) => {
-            // status pengisi
+        data.forEach(r => {
             perStatusPengisi[r.status_pengisi] =
                 (perStatusPengisi[r.status_pengisi] || 0) + 1
 
-            // status proses
             perStatus[r.status] =
                 (perStatus[r.status] || 0) + 1
+
+            perJenis[r.jenis] =
+                (perJenis[r.jenis] || 0) + 1
         })
 
         return {
             total: data.length,
             perStatusPengisi,
-            perStatus
+            perStatus,
+            perJenis
         }
     }
 
@@ -195,9 +328,9 @@ export default function RiwayatMajelisPage() {
     }, [bulan])
 
     return (
-        <main className="min-h-screen bg-neutral-50 p-6">
+        <main className="min-h-screen p-6">
             {/* NAVBAR */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-neutral-200">
+            <div className="sticky top-6 z-30 bg-white/80 backdrop-blur-sm border-b rounded-full border-neutral-200">
                 <div className="mx-auto px-6 h-16 flex items-center justify-between">
 
                     {/* Left */}
@@ -219,21 +352,19 @@ export default function RiwayatMajelisPage() {
                             Dashboard
                         </button>
                         <button
-                            onClick={() => exportPDF(filteredRequests)}
-                            className="
-          px-4 py-2 rounded-xl
-          bg-red-600 text-white
-          hover:bg-red-700
-          transition
-        "
+                            onClick={() => {
+                                setOpenExport(true)
+                                setTimeout(() => setExportVisible(true), 10)
+                            }}
+                            className="px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white"
                         >
-                            Export PDF
+                            Export
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-wrap items-end gap-4 mt-2 mb-4">
+            <div className="flex flex-wrap items-end gap-4 mt-4 mb-4">
 
                 {/* TAHUN */}
                 <div>
@@ -293,7 +424,7 @@ export default function RiwayatMajelisPage() {
 
             {/* STATISTIK */}
             {statistik && (
-                <div className="mb-6 grid gap-4 md:grid-cols-3">
+                <div className="mb-4 grid gap-4 md:grid-cols-3">
                     <div className="border border-gray-100 bg-white rounded-2xl p-5 mb-4 shadow-sm hover:shadow-md transition-all duration-300 shadow-sm">
                         <p className="text-sm text-gray-500">
                             Total Permintaan{' '}
@@ -468,6 +599,103 @@ export default function RiwayatMajelisPage() {
                     )
                 }
                 )}
+            <AnimatePresence>
+                {openExport && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+                        onClick={closeExportModal}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            transition={{ duration: 0.25, ease: "easeOut" }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 relative shadow-2xl"
+                        >
+                            {/* HEADER */}
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-lg text-black font-semibold">
+                                    Export Data
+                                </h2>
+
+                                <button
+                                    onClick={closeExportModal}
+                                    className="text-black text-lg font-bold hover:text-red-600 transition"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+
+                            {/* FILTER */}
+                            <input
+                                type="number"
+                                placeholder="Tahun"
+                                value={exportTahun}
+                                onChange={e => setExportTahun(e.target.value)}
+                                className="w-full border px-3 py-2 rounded-lg text-black"
+                            />
+
+                            <input
+                                type="month"
+                                value={exportBulan}
+                                onChange={e => setExportBulan(e.target.value)}
+                                className="w-full border px-3 py-2 rounded-lg text-black"
+                            />
+
+                            <div className="flex gap-2">
+                                {['all', 'warta', 'saran'].map(j => (
+                                    <button
+                                        key={j}
+                                        onClick={() => setExportJenis(j as any)}
+                                        className={`flex-1 py-2 rounded-lg text-sm transition ${exportJenis === j
+                                            ? 'bg-neutral-900 text-white'
+                                            : 'bg-neutral-100 text-black hover:bg-neutral-200'
+                                            }`}
+                                    >
+                                        {j === 'all' ? 'Semua' : j === 'warta' ? 'Warta' : 'Saran'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* ACTIONS */}
+                            <div className="flex gap-3 pt-3">
+                                <button
+                                    onClick={exportPDF}
+                                    className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
+                                >
+                                    Export PDF
+                                </button>
+
+                                <button
+                                    onClick={exportExcel}
+                                    className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition"
+                                >
+                                    Export Excel
+                                </button>
+                            </div>
+
+                            {/* CLEAR */}
+                            <button
+                                onClick={() => {
+                                    setExportTahun('')
+                                    setExportBulan('')
+                                    setExportJenis('all')
+                                }}
+                                className="w-full text-sm text-neutral-500 hover:text-black pt-2 transition"
+                            >
+                                Clear Filter
+                            </button>
+
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </main >
     )
 }

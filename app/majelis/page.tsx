@@ -225,9 +225,9 @@ export default function MajelisPage() {
     }, [])
 
     return (
-        <main className="min-h-screen bg-neutral-50 p-6">
+        <main className="min-h-screen p-6">
             {/* NAVBAR */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-neutral-200">
+            <div className="sticky top-6 z-30 bg-white/80 backdrop-blur-sm border-b rounded-full border-neutral-200">
                 <div className="mx-auto px-6 h-16 flex items-center justify-between">
 
                     {/* Left */}
