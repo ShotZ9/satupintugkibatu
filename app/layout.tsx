@@ -66,7 +66,7 @@ export default function RootLayout({
         </main>
 
         {/* FOOTER - GLOBAL */}
-        <footer className="bg-white border-t border-gray-200">
+        <footer className="bg-[#fdfbf9] border-t border-gray-200">
           <div className=" mx-auto px-6 py-8">
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-8 text-sm text-gray-600 text-center md:text-left">
 
