@@ -20,8 +20,6 @@ export const metadata: Metadata = {
     apple: '/icon192.png'
   },
 
-  themeColor: '#111827',
-
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

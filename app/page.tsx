@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 
 export default function Home() {
   const [loading, setLoading] = useState(false)
-  const [jenis, setJenis] = useState<'warta' | 'saran'>('warta')
+  const [jenis, setJenis] = useState<'warta' | 'saran'>('saran')
 
   const inputClass =
     'w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm ' +
@@ -60,20 +60,9 @@ export default function Home() {
               transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               className="absolute top-1 bottom-1 w-1/2 rounded-full bg-neutral-900"
               style={{
-                left: jenis === 'warta' ? '4px' : 'calc(50% - 4px)',
+                left: jenis === 'saran' ? '4px' : 'calc(50% - 4px)',
               }}
-            />
-
-            <button
-              type="button"
-              onClick={() => setJenis('warta')}
-              className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors ${jenis === 'warta'
-                ? 'text-white'
-                : 'text-neutral-600'
-                }`}
-            >
-              Warta Jemaat
-            </button>
+            />            
 
             <button
               type="button"
@@ -84,6 +73,17 @@ export default function Home() {
                 }`}
             >
               Kotak Saran
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setJenis('warta')}
+              className={`relative z-10 flex-1 py-2 text-sm font-medium transition-colors ${jenis === 'warta'
+                ? 'text-white'
+                : 'text-neutral-600'
+                }`}
+            >
+              Warta Jemaat
             </button>
 
           </div>
@@ -113,6 +113,7 @@ export default function Home() {
               <option>Komisi Pemuda Remaja</option>
               <option>Komisi Muger</option>
               <option>Komisi Anak</option>
+              <option>Digital Ministry</option>
               <option>Majelis Jemaat</option>
               <option>Jemaat Umum</option>
               <option>Simpatisan</option>
